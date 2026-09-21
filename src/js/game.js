@@ -28,6 +28,7 @@ function createGame() {
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    elapsedFrames: 0,
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -42,6 +43,7 @@ function createGame() {
       dir: 'up',
       speed: GHOST_SPEED,
       kind: g.kind,
+      releaseFrame: g.releaseFrame,
     } ) ),
   };
 }
@@ -110,9 +112,10 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
-function decideGhost( game, g ) {
+// Elige la direccion que minimiza la distancia Manhattan desde la celda del
+// fantasma hasta el objetivo (tx, ty), sin girar 180 y evitando muros.
+function pickDirToward( game, g, tx, ty ) {
   const grid = game.grid;
-  const p = game.pacman;
 
   const options = Object.keys( DIRS ).filter(
     ( dir ) => dir !== OPPOSITE[ g.dir ] && canMove( grid, g.x, g.y, dir, 'ghost' )
@@ -120,24 +123,45 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'hunter' ) {
-    const px = Math.round( p.x );
-    const py = Math.round( p.y );
-    let best = choices[ 0 ];
-    let bestDist = Infinity;
-    for ( const dir of choices ) {
-      const d = DIRS[ dir ];
-      const nx = g.x + d.x;
-      const ny = g.y + d.y;
-      const dist = Math.abs( nx - px ) + Math.abs( ny - py );
-      if ( dist < bestDist ) {
-        bestDist = dist;
-        best = dir;
-      }
+  let best = choices[ 0 ];
+  let bestDist = Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const nx = g.x + d.x;
+    const ny = g.y + d.y;
+    const dist = Math.abs( nx - tx ) + Math.abs( ny - ty );
+    if ( dist < bestDist ) {
+      bestDist = dist;
+      best = dir;
     }
-    g.dir = best;
-  } else {
-    g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
+  }
+  return best;
+}
+
+// Objetivo por personalidad y direccion que lo persigue.
+function decideGhost( game, g ) {
+  const p = game.pacman;
+  const px = Math.round( p.x );
+  const py = Math.round( p.y );
+
+  if ( g.kind === 'blinky' ) {
+    g.dir = pickDirToward( game, g, px, py );
+  } else if ( g.kind === 'pinky' ) {
+    // Emboscada: 4 celdas delante de Pac-Man segun su direccion.
+    const d = DIRS[ p.dir ];
+    g.dir = pickDirToward( game, g, px + d.x * 4, py + d.y * 4 );
+  } else if ( g.kind === 'inky' ) {
+    // Ancla en Blinky: doble del vector Blinky -> Pac-Man.
+    const blinky = game.ghosts.find( ( o ) => o.kind === 'blinky' );
+    const bx = Math.round( blinky.x );
+    const by = Math.round( blinky.y );
+    g.dir = pickDirToward( game, g, 2 * px - bx, 2 * py - by );
+  } else if ( g.kind === 'clyde' ) {
+    // Cobarde: persigue a >=8 celdas y se retira a la esquina (0,30).
+    const far = Math.abs( g.x - px ) + Math.abs( g.y - py ) >= 8;
+    const tx = far ? px : 0;
+    const ty = far ? py : 30;
+    g.dir = pickDirToward( game, g, tx, ty );
   }
 }
 
@@ -164,6 +188,7 @@ function resetPositions( game ) {
   p.y = PACMAN_START.y;
   p.dir = 'left';
   p.nextDir = null;
+  game.elapsedFrames = 0;
   game.ghosts.forEach( ( g, i ) => {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
@@ -176,8 +201,11 @@ function collides( a, b ) {
 }
 
 function update( game ) {
+  game.elapsedFrames++;
   movePacman( game );
-  game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
+  game.ghosts.forEach( ( g ) => {
+    if ( game.elapsedFrames >= g.releaseFrame ) moveGhost( game, g );
+  } );
 
   for ( const g of game.ghosts ) {
     if ( collides( game.pacman, g ) ) {

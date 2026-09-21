@@ -98,17 +98,18 @@ function drawPacman( ctx, p, frame ) {
   ctx.fill();
 }
 
-function drawGhost( ctx, g, color ) {
+function drawGhost( ctx, g, color, bob ) {
   const { cx, cy } = cellCenter( g.x, g.y );
+  const oy = cy + ( bob || 0 );
   const r = TILE / 2 - 1;
-  const top = cy - r;
-  const bottom = cy + r;
+  const top = oy - r;
+  const bottom = oy + r;
   const left = cx - r;
   const right = cx + r;
 
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc( cx, cy - 1, r, Math.PI, 0, false ); // cabeza
+  ctx.arc( cx, oy - 1, r, Math.PI, 0, false ); // cabeza
   ctx.lineTo( right, bottom );
   // falda ondulada (3 picos)
   ctx.lineTo( right - r * 0.66, bottom - 4 );
@@ -125,11 +126,11 @@ function drawGhost( ctx, g, color ) {
   for ( const off of [ -3.5, 3.5 ] ) {
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc( cx + off, cy - 1, 3, 0, Math.PI * 2 );
+    ctx.arc( cx + off, oy - 1, 3, 0, Math.PI * 2 );
     ctx.fill();
     ctx.fillStyle = '#0000bb';
     ctx.beginPath();
-    ctx.arc( cx + off + ex, cy - 1 + ey, 1.5, 0, Math.PI * 2 );
+    ctx.arc( cx + off + ex, oy - 1 + ey, 1.5, 0, Math.PI * 2 );
     ctx.fill();
   }
 }
@@ -144,7 +145,12 @@ function drawHUD( ctx, game, W ) {
   ctx.fillText( 'VIDAS ' + game.lives, W * TILE - 8, 4 );
 }
 
-const GHOST_COLORS = [ '#ff0000', '#00ffff', '#ffb8ff', '#ffb852' ];
+const GHOST_KIND_COLORS = {
+  blinky: '#ff0000',
+  pinky: '#ffb8ff',
+  inky: '#00ffff',
+  clyde: '#ffb852',
+};
 
 function draw( ctx, game, frame ) {
   const grid = game.grid;
@@ -158,7 +164,11 @@ function draw( ctx, game, frame ) {
   drawDoor( ctx, grid );
   drawDots( ctx, grid );
   drawPacman( ctx, game.pacman, frame );
-  game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, GHOST_COLORS[ i ] || '#ff0000' ) );
+  game.ghosts.forEach( ( g ) => {
+    const released = game.elapsedFrames >= g.releaseFrame;
+    const bob = released ? 0 : Math.sin( frame * 0.15 + g.x ) * 2;
+    drawGhost( ctx, g, GHOST_KIND_COLORS[ g.kind ] || '#ff0000', bob );
+  } );
   drawHUD( ctx, game, W );
 }
 
