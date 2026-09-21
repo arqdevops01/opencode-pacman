@@ -145,7 +145,7 @@ function drawHUD( ctx, game, W ) {
   ctx.fillText( 'VIDAS ' + game.lives, W * TILE - 8, 4 );
 }
 
-const GHOST_COLORS = {
+const GHOST_KIND_COLORS = {
   blinky: '#ff0000',
   pinky: '#ffb8ff',
   inky: '#00ffff',
@@ -167,7 +167,7 @@ function draw( ctx, game, frame ) {
   game.ghosts.forEach( ( g ) => {
     const released = game.elapsedFrames >= g.releaseFrame;
     const bob = released ? 0 : Math.sin( frame * 0.15 + g.x ) * 2;
-    drawGhost( ctx, g, GHOST_COLORS[ g.kind ] || '#ff0000', bob );
+    drawGhost( ctx, g, GHOST_KIND_COLORS[ g.kind ] || '#ff0000', bob );
   } );
   drawHUD( ctx, game, W );
 }

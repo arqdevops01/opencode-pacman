@@ -1,6 +1,6 @@
 # SPEC 01 — Personalidades de fantasmas (Blinky, Pinky, Inky, Clyde)
 
-> **Estado:** Aprovado
+> **Estado:** Implementado
 > **Depende de:** — (primer spec del proyecto)
 > **Fecha:** 2026-09-21
 > **Objetivo:** dar a los cuatro fantasmas del juego una personalidad propia y distinta, siendo Blinky un perseguidor agresivo de Pac-Man, y liberarlos del pen de forma escalonada como el original.
